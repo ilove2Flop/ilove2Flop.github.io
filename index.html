@@ -48,6 +48,9 @@
     .shop {
       max-width: 320px;
       margin: 30px auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
     }
     .item {
       background: #f3e5f5;
@@ -57,10 +60,11 @@
       cursor: pointer;
       transition: background 0.2s, transform 0.2s;
       border-radius: 10px;
+      text-align: center;
     }
     .item:hover {
       background: #e1bee7;
-      transform: scale(1.02);
+      transform: scale(1.05);
     }
     #achievements {
       font-size: 20px;
@@ -102,6 +106,9 @@
   <div class="shop">
     <div class="item" onclick="buyFloppaPower()">Buy Floppa Power (+1, Cost: <span id="floppaPowerCost">20</span>)</div>
     <div class="item" onclick="buyAutoFloppa()">Buy Auto Floppa (Cost: <span id="autoFloppaCost">50</span>)</div>
+    <div class="item" onclick="buyFloppaCoin()">Buy Floppa Coin (Boost: +2, Cost: <span id="floppaCoinCost">100</span>)</div>
+    <div class="item" onclick="buyFloppaBoost()">Buy Floppa Boost (Earnings x2, Cost: <span id="floppaBoostCost">150</span>)</div>
+    <div class="item" onclick="buyFloppaJar()">Buy Floppa Jar (Passive Income: +5/sec, Cost: <span id="floppaJarCost">300</span>)</div>
   </div>
 
   <div id="achievements">Achievements</div>
@@ -120,8 +127,14 @@
     let score = 0;
     let floppaPower = 1;
     let autoFloppa = 0;
+    let floppaCoin = 0;
+    let floppaBoost = 1;
+    let floppaJar = 0;
     let floppaPowerCost = 20;
     let autoFloppaCost = 50;
+    let floppaCoinCost = 100;
+    let floppaBoostCost = 150;
+    let floppaJarCost = 300;
     let multiplier = 1;
     let prestigeLevel = 0;
 
@@ -132,6 +145,9 @@
     const floppa = document.getElementById('floppa');
     const floppaPowerCostDisplay = document.getElementById('floppaPowerCost');
     const autoFloppaCostDisplay = document.getElementById('autoFloppaCost');
+    const floppaCoinCostDisplay = document.getElementById('floppaCoinCost');
+    const floppaBoostCostDisplay = document.getElementById('floppaBoostCost');
+    const floppaJarCostDisplay = document.getElementById('floppaJarCost');
     const achievementList = document.getElementById('achievement-list');
     const eventDisplay = document.getElementById('event');
     const leaderboardDisplay = document.getElementById('leaderboard');
@@ -182,10 +198,59 @@
       }
     }
 
+    // Buy Floppa Coin
+    function buyFloppaCoin() {
+      if (score >= floppaCoinCost) {
+        score -= floppaCoinCost;
+        floppaCoin += 2;
+        floppaCoinCost = Math.floor(floppaCoinCost * 1.5);
+        floppaCoinCostDisplay.textContent = floppaCoinCost.toFixed(0);
+        updateScore();
+        upgradeSound.play();
+        showEvent("Floppa Coin collected!");
+      } else {
+        showEvent("Not enough Floppas for Coin!");
+      }
+    }
+
+    // Buy Floppa Boost
+    function buyFloppaBoost() {
+      if (score >= floppaBoostCost) {
+        score -= floppaBoostCost;
+        floppaBoost *= 2;
+        floppaBoostCost = Math.floor(floppaBoostCost * 1.5);
+        floppaBoostCostDisplay.textContent = floppaBoostCost.toFixed(0);
+        updateScore();
+        upgradeSound.play();
+        showEvent("Floppa Boost activated!");
+      } else {
+        showEvent("Not enough Floppas for Boost!");
+      }
+    }
+
+    // Buy Floppa Jar
+    function buyFloppaJar() {
+      if (score >= floppaJarCost) {
+        score -= floppaJarCost;
+        floppaJar += 5;
+        floppaJarCost = Math.floor(floppaJarCost * 1.5);
+        floppaJarCostDisplay.textContent = floppaJarCost.toFixed(0);
+        updateScore();
+        upgradeSound.play();
+        showEvent("Floppa Jar filled!");
+      } else {
+        showEvent("Not enough Floppas for Jar!");
+      }
+    }
+
     // Auto Floppa logic
     setInterval(() => {
       if (autoFloppa > 0) {
-        score += autoFloppa;
+        score += autoFloppa * floppaBoost;
+        updateScore();
+      }
+      if (floppaJar > 0) {
+        score += floppaJar;
         updateScore();
       }
     }, 1000);
