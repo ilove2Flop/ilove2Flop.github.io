@@ -1,1 +1,1 @@
-Hello, World!
+I am the all ranged atomic 
