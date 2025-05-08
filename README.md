@@ -1,1 +1,0 @@
-I am the all ranged atomic 
