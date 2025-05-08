@@ -9,15 +9,17 @@
       background: #fff8e1;
       text-align: center;
       padding-top: 30px;
+      margin: 0;
     }
     h1 {
       font-size: 2.5em;
       color: #6a1b9a;
+      margin-bottom: 10px;
     }
     #floppa {
       width: 220px;
       height: 220px;
-      background-image: url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...'); /* Truncated for brevity */
+      background-image: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Caracal_cat.jpg');
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
@@ -25,6 +27,7 @@
       border-radius: 20px;
       cursor: pointer;
       transition: transform 0.1s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
     #floppa:active {
       transform: scale(0.95);
@@ -44,10 +47,12 @@
       border: 1px solid #ce93d8;
       margin-bottom: 10px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.2s;
+      border-radius: 10px;
     }
     .item:hover {
       background: #e1bee7;
+      transform: scale(1.02);
     }
     #achievements {
       font-size: 20px;
@@ -76,8 +81,83 @@
   <div id="score">Floppas: 0</div>
   <div id="floppa" title="Click the Floppa!"></div>
 
-  <!-- (Script and rest of content below remains unchanged...) -->
-  <!-- You can copy the rest of your working JavaScript code here -->
+  <div class="shop">
+    <div class="item" onclick="buyUpgrade()">Buy Auto Floppa (Cost: <span id="upgradeCost">50</span>)</div>
+  </div>
+
+  <div id="achievements">Achievements</div>
+  <ul id="achievement-list"></ul>
+
+  <div id="event"></div>
+
+  <script>
+    let score = 0;
+    let floppaPower = 1;
+    let upgradeCost = 50;
+    let autoFloppa = 0;
+
+    const scoreDisplay = document.getElementById('score');
+    const floppa = document.getElementById('floppa');
+    const upgradeCostDisplay = document.getElementById('upgradeCost');
+    const achievementList = document.getElementById('achievement-list');
+    const eventDisplay = document.getElementById('event');
+
+    floppa.addEventListener('click', () => {
+      score += floppaPower;
+      updateScore();
+      checkAchievements();
+    });
+
+    function updateScore() {
+      scoreDisplay.textContent = `Floppas: ${score}`;
+    }
+
+    function buyUpgrade() {
+      if (score >= upgradeCost) {
+        score -= upgradeCost;
+        autoFloppa++;
+        upgradeCost = Math.floor(upgradeCost * 1.5);
+        upgradeCostDisplay.textContent = upgradeCost;
+        updateScore();
+        showEvent("Auto Floppa hired! +1 Floppa per second");
+      } else {
+        showEvent("Not enough Floppas!");
+      }
+    }
+
+    function checkAchievements() {
+      if (score >= 100 && !document.getElementById('achv-100')) {
+        const li = document.createElement('li');
+        li.textContent = "Collected 100 Floppas!";
+        li.className = "achievement";
+        li.id = "achv-100";
+        achievementList.appendChild(li);
+      }
+      if (score >= 500 && !document.getElementById('achv-500')) {
+        const li = document.createElement('li');
+        li.textContent = "You're a true Floppa fan! (500+)";
+        li.className = "achievement";
+        li.id = "achv-500";
+        achievementList.appendChild(li);
+      }
+    }
+
+    function showEvent(text) {
+      eventDisplay.textContent = text;
+      setTimeout(() => {
+        eventDisplay.textContent = '';
+      }, 3000);
+    }
+
+    // Auto clicker logic
+    setInterval(() => {
+      if (autoFloppa > 0) {
+        score += autoFloppa;
+        updateScore();
+        checkAchievements();
+      }
+    }, 1000);
+  </script>
 
 </body>
 </html>
