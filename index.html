@@ -10,6 +10,7 @@
       text-align: center;
       padding-top: 30px;
       margin: 0;
+      overflow: hidden;
     }
     h1 {
       font-size: 2.5em;
@@ -26,11 +27,18 @@
       margin: 20px auto;
       border-radius: 20px;
       cursor: pointer;
-      transition: transform 0.1s ease;
+      transition: transform 0.1s ease, box-shadow 0.2s;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      animation: floppaAnimation 2s infinite ease-in-out;
+    }
+    @keyframes floppaAnimation {
+      0% { transform: rotate(0deg); }
+      50% { transform: rotate(10deg); }
+      100% { transform: rotate(0deg); }
     }
     #floppa:active {
       transform: scale(0.95);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
     }
     #score {
       font-size: 24px;
@@ -73,6 +81,16 @@
       font-weight: bold;
       margin-top: 20px;
     }
+    .leaderboard {
+      font-size: 18px;
+      margin-top: 20px;
+    }
+    .prestige {
+      margin-top: 30px;
+      font-size: 22px;
+      color: #00695c;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -82,7 +100,8 @@
   <div id="floppa" title="Click the Floppa!"></div>
 
   <div class="shop">
-    <div class="item" onclick="buyUpgrade()">Buy Auto Floppa (Cost: <span id="upgradeCost">50</span>)</div>
+    <div class="item" onclick="buyFloppaPower()">Buy Floppa Power (+1, Cost: <span id="floppaPowerCost">20</span>)</div>
+    <div class="item" onclick="buyAutoFloppa()">Buy Auto Floppa (Cost: <span id="autoFloppaCost">50</span>)</div>
   </div>
 
   <div id="achievements">Achievements</div>
@@ -90,41 +109,96 @@
 
   <div id="event"></div>
 
+  <div class="prestige" onclick="prestige()">Prestige (Reset Game for Bonus Multiplier)</div>
+
+  <div class="leaderboard" id="leaderboard"></div>
+
+  <audio id="clickSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+  <audio id="upgradeSound" src="https://www.soundjay.com/button/beep-09.wav"></audio>
+
   <script>
     let score = 0;
     let floppaPower = 1;
-    let upgradeCost = 50;
     let autoFloppa = 0;
+    let floppaPowerCost = 20;
+    let autoFloppaCost = 50;
+    let multiplier = 1;
+    let prestigeLevel = 0;
+
+    // Load leaderboard from localStorage
+    let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
 
     const scoreDisplay = document.getElementById('score');
     const floppa = document.getElementById('floppa');
-    const upgradeCostDisplay = document.getElementById('upgradeCost');
+    const floppaPowerCostDisplay = document.getElementById('floppaPowerCost');
+    const autoFloppaCostDisplay = document.getElementById('autoFloppaCost');
     const achievementList = document.getElementById('achievement-list');
     const eventDisplay = document.getElementById('event');
+    const leaderboardDisplay = document.getElementById('leaderboard');
+    const clickSound = document.getElementById('clickSound');
+    const upgradeSound = document.getElementById('upgradeSound');
 
+    // Floppa click logic
     floppa.addEventListener('click', () => {
-      score += floppaPower;
+      score += floppaPower * multiplier;
+      clickSound.play();
       updateScore();
       checkAchievements();
     });
 
+    // Update the score display
     function updateScore() {
-      scoreDisplay.textContent = `Floppas: ${score}`;
+      scoreDisplay.textContent = `Floppas: ${score.toFixed(0)}`;
+      saveToLeaderboard();
     }
 
-    function buyUpgrade() {
-      if (score >= upgradeCost) {
-        score -= upgradeCost;
-        autoFloppa++;
-        upgradeCost = Math.floor(upgradeCost * 1.5);
-        upgradeCostDisplay.textContent = upgradeCost;
+    // Buy Floppa Power
+    function buyFloppaPower() {
+      if (score >= floppaPowerCost) {
+        score -= floppaPowerCost;
+        floppaPower += 1;
+        floppaPowerCost = Math.floor(floppaPowerCost * 1.5);
+        floppaPowerCostDisplay.textContent = floppaPowerCost.toFixed(0);
         updateScore();
-        showEvent("Auto Floppa hired! +1 Floppa per second");
+        upgradeSound.play();
+        showEvent("Floppa Power increased!");
       } else {
-        showEvent("Not enough Floppas!");
+        showEvent("Not enough Floppas for Power!");
       }
     }
 
+    // Buy Auto Floppa
+    function buyAutoFloppa() {
+      if (score >= autoFloppaCost) {
+        score -= autoFloppaCost;
+        autoFloppa++;
+        autoFloppaCost = Math.floor(autoFloppaCost * 1.5);
+        autoFloppaCostDisplay.textContent = autoFloppaCost.toFixed(0);
+        updateScore();
+        upgradeSound.play();
+        showEvent("Auto Floppa hired!");
+      } else {
+        showEvent("Not enough Floppas for Auto Floppa!");
+      }
+    }
+
+    // Auto Floppa logic
+    setInterval(() => {
+      if (autoFloppa > 0) {
+        score += autoFloppa;
+        updateScore();
+      }
+    }, 1000);
+
+    // Show event message
+    function showEvent(text) {
+      eventDisplay.textContent = text;
+      setTimeout(() => {
+        eventDisplay.textContent = '';
+      }, 3000);
+    }
+
+    // Achievements check
     function checkAchievements() {
       if (score >= 100 && !document.getElementById('achv-100')) {
         const li = document.createElement('li');
@@ -140,23 +214,46 @@
         li.id = "achv-500";
         achievementList.appendChild(li);
       }
-    }
-
-    function showEvent(text) {
-      eventDisplay.textContent = text;
-      setTimeout(() => {
-        eventDisplay.textContent = '';
-      }, 3000);
-    }
-
-    // Auto clicker logic
-    setInterval(() => {
-      if (autoFloppa > 0) {
-        score += autoFloppa;
-        updateScore();
-        checkAchievements();
+      if (score >= 1000 && !document.getElementById('achv-1000')) {
+        const li = document.createElement('li');
+        li.textContent = "Floppa Master! (1000+)";
+        li.className = "achievement";
+        li.id = "achv-1000";
+        achievementList.appendChild(li);
       }
-    }, 1000);
+    }
+
+    // Prestige function
+    function prestige() {
+      let newScore = Math.floor(score * 0.1);  // Keep 10% after prestige
+      let newMultiplier = multiplier * 2;
+      prestigeLevel++;
+
+      score = 0;
+      multiplier = newMultiplier;
+
+      showEvent(`Prestige Level ${prestigeLevel} reached! Bonus multiplier: x${newMultiplier}`);
+      updateScore();
+    }
+
+    // Save leaderboard to localStorage
+    function saveToLeaderboard() {
+      leaderboard.push({ score: score, date: new Date() });
+      leaderboard.sort((a, b) => b.score - a.score);
+      leaderboard = leaderboard.slice(0, 5);  // Keep top 5 scores
+      localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+      displayLeaderboard();
+    }
+
+    // Display leaderboard
+    function displayLeaderboard() {
+      leaderboardDisplay.innerHTML = '<h2>Leaderboard</h2>';
+      leaderboard.forEach((entry, index) => {
+        leaderboardDisplay.innerHTML += `<p>Rank ${index + 1}: ${entry.score} Floppas</p>`;
+      });
+    }
+
+    displayLeaderboard();  // Initial leaderboard display
   </script>
 
 </body>
