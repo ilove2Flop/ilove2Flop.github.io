@@ -2,115 +2,224 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Basic FPS Game</title>
+  <title>Duck Clicker</title>
   <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
-    #instructions {
-      position: absolute;
-      top: 0;
-      width: 100%;
-      color: white;
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #e0f7fa;
       text-align: center;
+      padding-top: 30px;
+    }
+    h1 {
+      font-size: 2.5em;
+      color: #0277bd;
+    }
+    #duck {
+      width: 200px;
+      height: 200px;
+      background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Rubber_duck.svg/200px-Rubber_duck.svg.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      margin: 20px auto;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+    #duck:active {
+      transform: scale(0.95);
+    }
+    #score {
       font-size: 24px;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 1;
+      margin: 15px;
+      color: #00796b;
+    }
+    .shop {
+      max-width: 300px;
+      margin: 30px auto;
+    }
+    .item {
+      background: #fff;
       padding: 10px;
+      border: 1px solid #b0bec5;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .item:hover {
+      background: #e1f5fe;
+    }
+    #achievements {
+      font-size: 20px;
+      margin-top: 20px;
+      color: #ff7043;
+    }
+    #achievement-list {
+      list-style-type: none;
+      padding: 0;
+    }
+    .achievement {
+      font-size: 18px;
+      color: #388e3c;
+    }
+    #event {
+      font-size: 18px;
+      color: #ff9800;
+      font-weight: bold;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <div id="instructions">Click to play. Use W/A/S/D to move and mouse to look around.</div>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/PointerLockControls.js"></script>
+
+  <h1>Duck Clicker</h1>
+  <div id="score">Ducks: 0</div>
+  <div id="duck" title="Click the duck!"></div>
+
+  <div class="shop">
+    <div class="item" onclick="buyUpgrade('duckNest')">🐣 Buy Duck Nest (Cost: <span id="costDuckNest">50</span>)</div>
+    <div class="item" onclick="buyUpgrade('duckFarm')">🏡 Buy Duck Farm (Cost: <span id="costDuckFarm">200</span>)</div>
+    <div class="item" onclick="buyUpgrade('duckFactory')">🏭 Buy Duck Factory (Cost: <span id="costDuckFactory">1000</span>)</div>
+    <div class="item" onclick="buyUpgrade('duckMansion')">🏰 Buy Duck Mansion (Cost: <span id="costDuckMansion">5000</span>)</div>
+    <div class="item" onclick="buyUpgrade('duckZoo')">🦆 Buy Duck Zoo (Cost: <span id="costDuckZoo">10000</span>)</div>
+  </div>
+
+  <div id="achievements">
+    <h2>Achievements</h2>
+    <ul id="achievement-list"></ul>
+  </div>
+
+  <div id="event"></div>
+
   <script>
-    let camera, scene, renderer, controls;
-    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-    const velocity = new THREE.Vector3();
+    let ducks = 0;
+    let autoClickers = 0;
+    let costDuckNest = 50;
+    let costDuckFarm = 200;
+    let costDuckFactory = 1000;
+    let costDuckMansion = 5000;
+    let costDuckZoo = 10000;
 
-    init();
-    animate();
+    let achievements = [];
+    let eventActive = false;
+    let eventBonus = 0;
 
-    function init() {
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 1000);
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x202020);
+    const duck = document.getElementById('duck');
+    const scoreDisplay = document.getElementById('score');
+    const costDuckNestDisplay = document.getElementById('costDuckNest');
+    const costDuckFarmDisplay = document.getElementById('costDuckFarm');
+    const costDuckFactoryDisplay = document.getElementById('costDuckFactory');
+    const costDuckMansionDisplay = document.getElementById('costDuckMansion');
+    const costDuckZooDisplay = document.getElementById('costDuckZoo');
+    const achievementList = document.getElementById('achievement-list');
+    const eventDisplay = document.getElementById('event');
 
-      const light = new THREE.DirectionalLight(0xffffff, 1);
-      light.position.set(1, 1, 1);
-      scene.add(light);
+    // Duck Click Sound
+    const duckClickSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
+    // Duck Nest Purchase Sound
+    const purchaseSound = new Audio('https://www.soundjay.com/button/beep-06.wav');
+    // Background Music
+    const backgroundMusic = new Audio('https://www.soundjay.com/button/beep-08b.mp3');
+    backgroundMusic.loop = true;
+    backgroundMusic.play();
 
-      // Floor
-      const floorGeometry = new THREE.PlaneGeometry(1000, 1000, 10, 10);
-      const floorMaterial = new THREE.MeshBasicMaterial({color: 0x333333});
-      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-      floor.rotation.x = - Math.PI / 2;
-      scene.add(floor);
+    duck.addEventListener('click', () => {
+      ducks += (1 + eventBonus);
+      updateDisplay();
+      duckClickSound.play();
+    });
 
-      controls = new THREE.PointerLockControls(camera, document.body);
+    function buyUpgrade(upgrade) {
+      let cost = 0;
+      let itemName = '';
+      let increase = 0;
 
-      const instructions = document.getElementById('instructions');
-      instructions.addEventListener('click', () => {
-        controls.lock();
+      if (upgrade === 'duckNest' && ducks >= costDuckNest) {
+        cost = costDuckNest;
+        itemName = 'Duck Nest';
+        increase = 1;
+      } else if (upgrade === 'duckFarm' && ducks >= costDuckFarm) {
+        cost = costDuckFarm;
+        itemName = 'Duck Farm';
+        increase = 5;
+      } else if (upgrade === 'duckFactory' && ducks >= costDuckFactory) {
+        cost = costDuckFactory;
+        itemName = 'Duck Factory';
+        increase = 20;
+      } else if (upgrade === 'duckMansion' && ducks >= costDuckMansion) {
+        cost = costDuckMansion;
+        itemName = 'Duck Mansion';
+        increase = 50;
+      } else if (upgrade === 'duckZoo' && ducks >= costDuckZoo) {
+        cost = costDuckZoo;
+        itemName = 'Duck Zoo';
+        increase = 100;
+      } else {
+        alert('You don’t have enough ducks!');
+        return;
+      }
+
+      // Deduct ducks and upgrade
+      ducks -= cost;
+      autoClickers += increase;
+      achievements.push(`Bought ${itemName}`);
+      eventActive = false; // Reset event when upgrade is purchased
+
+      // Increase the cost for the next purchase
+      if (upgrade === 'duckNest') {
+        costDuckNest = Math.floor(costDuckNest * 1.5);
+        costDuckNestDisplay.textContent = costDuckNest;
+      } else if (upgrade === 'duckFarm') {
+        costDuckFarm = Math.floor(costDuckFarm * 1.5);
+        costDuckFarmDisplay.textContent = costDuckFarm;
+      } else if (upgrade === 'duckFactory') {
+        costDuckFactory = Math.floor(costDuckFactory * 1.5);
+        costDuckFactoryDisplay.textContent = costDuckFactory;
+      } else if (upgrade === 'duckMansion') {
+        costDuckMansion = Math.floor(costDuckMansion * 1.5);
+        costDuckMansionDisplay.textContent = costDuckMansion;
+      } else if (upgrade === 'duckZoo') {
+        costDuckZoo = Math.floor(costDuckZoo * 1.5);
+        costDuckZooDisplay.textContent = costDuckZoo;
+      }
+
+      purchaseSound.play();
+      updateDisplay();
+      checkAchievements();
+    }
+
+    function updateDisplay() {
+      scoreDisplay.textContent = `Ducks: ${ducks}`;
+      achievementList.innerHTML = '';
+      achievements.forEach(achievement => {
+        const li = document.createElement('li');
+        li.classList.add('achievement');
+        li.textContent = achievement;
+        achievementList.appendChild(li);
       });
-
-      controls.addEventListener('lock', () => instructions.style.display = 'none');
-      controls.addEventListener('unlock', () => instructions.style.display = 'block');
-
-      scene.add(controls.getObject());
-
-      document.addEventListener('keydown', onKeyDown);
-      document.addEventListener('keyup', onKeyUp);
-
-      renderer = new THREE.WebGLRenderer();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
     }
 
-    function onKeyDown(event) {
-      switch (event.code) {
-        case 'ArrowUp':
-        case 'KeyW': moveForward = true; break;
-        case 'ArrowLeft':
-        case 'KeyA': moveLeft = true; break;
-        case 'ArrowDown':
-        case 'KeyS': moveBackward = true; break;
-        case 'ArrowRight':
-        case 'KeyD': moveRight = true; break;
+    function checkAchievements() {
+      if (ducks >= 1000 && !achievements.includes('1000 Ducks Achieved')) {
+        achievements.push('1000 Ducks Achieved');
+      }
+      if (ducks >= 5000 && !achievements.includes('5000 Ducks Achieved')) {
+        achievements.push('5000 Ducks Achieved');
       }
     }
 
-    function onKeyUp(event) {
-      switch (event.code) {
-        case 'ArrowUp':
-        case 'KeyW': moveForward = false; break;
-        case 'ArrowLeft':
-        case 'KeyA': moveLeft = false; break;
-        case 'ArrowDown':
-        case 'KeyS': moveBackward = false; break;
-        case 'ArrowRight':
-        case 'KeyD': moveRight = false; break;
+    // Random Event every 10 seconds
+    setInterval(() => {
+      if (!eventActive) {
+        const randomEvent = Math.random() < 0.3; // 30% chance for a bonus event
+        if (randomEvent) {
+          eventActive = true;
+          eventBonus = Math.floor(Math.random() * 10) + 1; // Random bonus from 1 to 10 ducks per click
+          eventDisplay.textContent = `🦆 Duck Sale! +${eventBonus} Ducks per click for 10 seconds.`;
+          setTimeout(() => {
+            eventActive = false;
+            eventBonus = 0;
+            eventDisplay.textContent = '';
+          }, 10000); // Event lasts for 10 seconds
+        }
       }
-    }
+    }, 10000);
 
-    function animate() {
-      requestAnimationFrame(animate);
-
-      const delta = 0.1;
-
-      velocity.x -= velocity.x * 10.0 * delta;
-      velocity.z -= velocity.z * 10.0 * delta;
-
-      if (moveForward) velocity.z -= 400.0 * delta;
-      if (moveBackward) velocity.z += 400.0 * delta;
-      if (moveLeft) velocity.x -= 400.0 * delta;
-      if (moveRight) velocity.x += 400.0 * delta;
-
-      controls.moveRight(velocity.x * delta);
-      controls.moveForward(velocity.z * delta);
-
-      renderer.render(scene, camera);
-    }
-  </script>
-</body>
-</html>
